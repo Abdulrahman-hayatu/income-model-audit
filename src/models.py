@@ -8,7 +8,7 @@ from xgboost import XGBClassifier
 
 SEED = 42
 
-
+# Preprocessor for handling numerical and categorical features
 def make_preprocessor(X):
     num = X.select_dtypes(include="number").columns.tolist()
     cat = X.select_dtypes(exclude="number").columns.tolist()
@@ -17,21 +17,21 @@ def make_preprocessor(X):
         ("cat", OneHotEncoder(handle_unknown="ignore"), cat),
     ])
 
-
+# Model definitions
 def _lr():
     return LogisticRegression(max_iter=1000)
 
-
+# Random Forest model
 def _rf(seed):
     return RandomForestClassifier(n_estimators=300, n_jobs=-1, random_state=seed)
 
-
+# XGBoost model
 def _xgb(seed, params=None):
     cfg = dict(n_estimators=300, eval_metric="logloss", n_jobs=-1, random_state=seed)
     cfg.update(params or {})
     return XGBClassifier(**cfg)
 
-
+# Stacking model
 def build_models(X, seed=SEED, xgb_params=None):
     """Return {name: sklearn Pipeline}. X is only used to detect column types."""
     def pipe(clf):
@@ -49,7 +49,7 @@ def build_models(X, seed=SEED, xgb_params=None):
         "Stacking (RF + XGB -> LR)": pipe(stack),
     }
 
-
+# Test the models on a small subset of the Adult Income dataset
 if __name__ == "__main__":
     from sklearn.metrics import roc_auc_score
     from src.data import load_adult

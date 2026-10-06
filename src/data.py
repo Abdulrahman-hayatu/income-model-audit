@@ -2,11 +2,12 @@
 from sklearn.datasets import fetch_openml
 from sklearn.model_selection import train_test_split
 
+# Constants for data loading
 SEED = 42
 POSITIVE_LABEL = ">50K"
 DROP_COLS = ["fnlwgt"]
 
-
+# Load the Adult Income dataset from OpenML, preprocess it, and split into train/test sets.
 def load_adult(seed: int = SEED, test_size: float = 0.2):
     """Return X_train, X_test, y_train, y_test (y: 1 if income > 50K)."""
     X, y = fetch_openml("adult", version=2, as_frame=True, return_X_y=True)
@@ -25,7 +26,7 @@ def load_adult(seed: int = SEED, test_size: float = 0.2):
     return (X_train.reset_index(drop=True), X_test.reset_index(drop=True),
             y_train.reset_index(drop=True), y_test.reset_index(drop=True))
 
-
+# Test the data loading function
 if __name__ == "__main__":
     X_train, X_test, y_train, y_test = load_adult()
     print("train/test shapes:", X_train.shape, X_test.shape)
