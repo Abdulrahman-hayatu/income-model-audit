@@ -15,7 +15,7 @@ def make_preprocessor(X):
     return ColumnTransformer([
         ("num", StandardScaler(), num),
         ("cat", OneHotEncoder(handle_unknown="ignore"), cat),
-    ])
+    ], sparse_threshold=0)
 
 # Model definitions
 def _lr():

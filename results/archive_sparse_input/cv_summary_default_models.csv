@@ -1,0 +1,5 @@
+model,ROC-AUC,PR-AUC,F1,fit time (s)
+Logistic Regression (baseline),0.9064 ± 0.0043,0.7653 ± 0.0123,0.6589 ± 0.011,0.5
+Random Forest (bagging),0.891 ± 0.0058,0.7339 ± 0.012,0.6558 ± 0.0063,17.5
+XGBoost (boosting),0.9242 ± 0.003,0.8191 ± 0.007,0.7042 ± 0.0099,1.0
+Stacking (RF + XGB -> LR),0.9239 ± 0.0031,0.8185 ± 0.0071,0.6978 ± 0.0089,110.7
