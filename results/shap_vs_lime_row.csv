@@ -1,0 +1,14 @@
+,SHAP (log-odds),LIME mean (prob),LIME std,SHAP rank,LIME rank,sign agree,LIME stable
+marital-status,0.766,0.1293,0.0045,1.0,2.0,True,True
+workclass,0.2125,0.0293,0.0165,2.0,6.0,True,False
+capital-gain,-0.1941,-0.6949,0.0174,3.0,1.0,True,True
+age,0.1825,0.0505,0.0043,4.0,5.0,True,True
+hours-per-week,0.1468,0.0731,0.0074,5.0,3.0,True,True
+capital-loss,-0.0772,-0.0556,0.0184,6.0,4.0,True,True
+relationship,0.0751,0.0122,0.0046,7.0,11.0,True,True
+occupation,0.0645,0.0122,0.0041,8.0,10.0,True,True
+sex,0.0608,0.0253,0.0028,9.0,7.0,True,True
+education-num,-0.0446,0.0161,0.0049,10.0,8.0,False,True
+education,-0.0362,0.0029,0.0056,11.0,13.0,False,False
+native-country,0.0149,0.0131,0.0038,12.0,9.0,True,True
+race,0.0104,0.0106,0.0038,13.0,12.0,True,True
