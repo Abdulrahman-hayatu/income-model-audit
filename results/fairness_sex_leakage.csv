@@ -1,0 +1,5 @@
+variant,AUC (sex from remaining features),std
+all features,0.9289462557986162,0.0028646387866921278
+"drop sex, race",0.9289533130939924,0.002987536922489852
+"drop sex, race, relationship",0.8565938266098911,0.005745886065926693
+"drop sex, race, relationship, marital-status",0.7907567488238304,0.004646123005593514
