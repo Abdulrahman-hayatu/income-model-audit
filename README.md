@@ -181,10 +181,10 @@ income-model-audit/
 
 **Abdulrahman Hayatu Usman**
 BSc Computer Science — Ahmadu Bello University, Zaria
-For Flexisaf internship weekly deliverable
 
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?logo=linkedin&logoColor=white)](https://linkedin.com/in/abdulrahman-hayatu)
 [![GitHub](https://img.shields.io/badge/GitHub-Profile-181717?logo=github&logoColor=white)](https://github.com/Abdulrahman-Hayatu)
 [![Email](https://img.shields.io/badge/Email-Contact-EA4335?logo=gmail&logoColor=white)](mailto:hayatuusmanabdulrahman@gmail.com)
 
 ---
+## For Flexisaf internship weekly deliverable
