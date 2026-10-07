@@ -2,4 +2,4 @@ __pycache__/
 .ipynb_checkpoints/
 .venv/
 *.pkl
-*.db
+*.db*:Zone.Identifier
