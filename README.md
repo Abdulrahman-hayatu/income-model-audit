@@ -2,6 +2,12 @@
 
 Ensemble learning, hyperparameter optimization, and explainability on the Adult Income dataset.
 
+## Context
+
+This repo is my submission for this week's deliverable for the Flexisaf internship. The brief was to build at least two models using the advanced machine learning techniques listed in the learning outcome.
+
+I built 5 models for the main comparison, of which 4 use advanced techniques (three ensemble methods, plus XGBoost tuned with hyperparameter optimization), and 3 more XGBoost variants for the fairness audit. That is 8 models in total. The technique list in the learning outcome includes ensemble learning, hyperparameter optimization, and explainable AI, and this repo covers all three. The brief asked for two.
+
 The task is to predict whether a person earns more than $50K a year. I use it to compare a baseline against ensembles, tune the best model, and then check what the model relies on with two explanation methods.
 
 ## Techniques covered
@@ -11,6 +17,24 @@ The task is to predict whether a person earns more than $50K a year. I use it to
 | Ensemble learning | `notebooks/01`, `notebooks/04` | Random Forest (bagging), XGBoost (boosting), and a stacking model, against a logistic regression baseline |
 | Hyperparameter optimization | `notebooks/02` | Optuna (TPE sampler), 40 trials, 8 XGBoost parameters, scored by cross-validated ROC-AUC |
 | Explainable AI | `notebooks/03` | SHAP (global and one local case), permutation importance as a cross-check, LIME on the same case |
+| Fairness audit (extra) | `notebooks/05`, `src/fairness.py` | Group metrics by sex and race, and a test of what happens when sensitive columns and their proxies are removed |
+
+## Models built
+
+| # | Model | Technique | Notebooks |
+|---|---|---|---|
+| 1 | Logistic regression | Baseline, not an advanced technique | 01, 04 |
+| 2 | Random forest | Ensemble learning (bagging) | 01, 04 |
+| 3 | XGBoost, default parameters | Ensemble learning (boosting) | 01, 04 |
+| 4 | Stacking (random forest + XGBoost → logistic regression) | Ensemble learning (stacking) | 01, 04 |
+| 5 | XGBoost, tuned with Optuna | Ensemble learning + hyperparameter optimization | 02, 04 |
+| 6 | XGBoost, tuned parameters, without `sex` and `race` | Fairness audit variant | 05 |
+| 7 | Same, also without `relationship` | Fairness audit variant | 05 |
+| 8 | Same, also without `marital-status` | Fairness audit variant | 05 |
+
+Explainable AI (SHAP, permutation importance, LIME) is applied to model 5 and does not add a model.
+
+How I counted: each row is a distinct model configuration. Cross-validation refits each configuration several times, and the Optuna search evaluated 40 candidate parameter sets. I count neither as separate models. LIME fits small local linear models around each explained row, and the fairness audit fits logistic regressions to test how well sex can be predicted from the other features. Those are analysis tools, so I did not count them.
 
 ## Data
 
@@ -120,7 +144,7 @@ Rank correlation is about 0.96. The top five features are the same under both me
 
 Things to keep in mind when reading this:
 - `education` and `education-num` encode the same information, so the credit is split between them. Their combined effect is larger than either bar.
-- `marital-status` and `relationship` both carry information about sex ("Husband", "Wife"). SHAP gives `sex` itself a mean |SHAP| of 0.152, but permutation importance gives it only a 0.0022 AUC drop. SHAP measures how far a feature moves the log-odds, and AUC only reacts when the ranking changes, so the two need not agree. I did not run a fairness analysis, so I make no claim about whether the model treats groups differently.
+- `relationship` has the levels Husband and Wife, and `marital-status` also correlates with sex. SHAP gives `sex` itself a mean |SHAP| of 0.152, but permutation importance gives it only a 0.0022 AUC drop. SHAP measures how far a feature moves the log-odds, and AUC only reacts when the ranking changes, so the two need not agree. The fairness audit below measures how much of sex can still be recovered once these columns are removed.
 - SHAP values are in log-odds. They describe what the model uses, not what causes income.
 
 **One borderline case, SHAP vs LIME**
@@ -139,6 +163,72 @@ I picked the training row closest to a predicted probability of 0.5 (row 28766, 
 
 This is one row. It shows how the methods behave on a single case, not which method is better in general.
 
+## Fairness audit
+
+The dataset has `sex` and `race` columns, so I checked how the tuned XGBoost behaves across groups and tested whether just dropping those columns helps.
+
+Setup: out-of-fold predictions on the training set (5-fold, so every row is scored by a model that did not see it), the tuned XGBoost parameters reused for every variant (they were tuned with all features and not re-tuned per variant), and a fixed 0.5 threshold. The test set was not used. Confidence intervals come from 1,000 bootstrap resamples of the rows and only reflect noise in the evaluation rows, not variation from training or random seeds. Everything below is one model and one seed.
+
+### The labels already differ by sex
+
+30.4% of men and 10.9% of women in the training data have income above $50K (a gap of 0.195). A model that tracks the labels will select men more often, so a selection gap alone cannot be read as the model's own bias.
+
+### All-features model, by sex
+
+| | n | base rate | selection rate | TPR | FPR | AUC |
+|---|---|---|---|---|---|---|
+| Male | 26,140 | 0.304 | 0.259 | 0.663 | 0.082 | 0.910 |
+| Female | 12,933 | 0.109 | 0.081 | 0.582 | 0.019 | 0.949 |
+
+- In absolute terms, the selection gap (0.178) is slightly smaller than the label gap (0.195). As a ratio it is slightly larger: men are selected 3.2 times as often as women, against a base-rate ratio of 2.8.
+- At the 0.5 threshold, women with income above $50K are found less often than men (TPR 0.582 vs 0.663), and women are also falsely flagged less often (FPR 0.019 vs 0.082).
+- AUC is higher for women (0.949 vs 0.910), so the model ranks women at least as well as men. The TPR and FPR differences come from where the fixed threshold lands for each group. I did not test other thresholds or group-specific thresholds.
+
+### What happens when sensitive columns are dropped
+
+Gaps are male minus female, with 95% bootstrap intervals. The last column is how well sex can be predicted from the remaining features (logistic regression, 5-fold ROC-AUC on the training set). That is a lower bound, since a stronger model could recover more.
+
+| Variant | ROC-AUC | F1 (0.5) | Selection gap | TPR gap | FPR gap | Sex predictable from remaining features |
+|---|---|---|---|---|---|---|
+| All features | 0.9289 | 0.7090 | +0.178 [+0.171, +0.185] | +0.080 [+0.053, +0.107] | +0.063 [+0.059, +0.068] | 0.929 (all features except sex) |
+| Drop sex, race | 0.9282 | 0.7078 | +0.174 [+0.168, +0.181] | +0.064 [+0.036, +0.091] | +0.062 [+0.057, +0.066] | 0.929 |
+| Also drop relationship | 0.9271 | 0.7072 | +0.191 [+0.185, +0.198] | +0.138 [+0.110, +0.165] | +0.070 [+0.066, +0.075] | 0.857 |
+| Also drop marital-status | 0.8877 | 0.6169 | +0.109 [+0.102, +0.115] | +0.070 [+0.042, +0.098] | +0.010 [+0.006, +0.015] | 0.791 |
+
+Paired changes against the all-features model (same resampled rows):
+
+| Variant | Selection gap change | TPR gap change | FPR gap change |
+|---|---|---|---|
+| Drop sex, race | −0.004 [−0.006, −0.002] | −0.016 [−0.026, −0.007] | −0.001 [−0.003, +0.000] |
+| Also drop relationship | +0.013 [+0.011, +0.016] | +0.058 [+0.042, +0.074] | +0.007 [+0.005, +0.010] |
+| Also drop marital-status | −0.069 [−0.075, −0.063] | −0.010 [−0.043, +0.018] | −0.053 [−0.058, −0.047] |
+
+What I take from this:
+- **Dropping `sex` and `race` changes very little.** AUC falls by 0.0007 and the gaps shrink slightly (selection −0.004, TPR −0.016). The changes are detectable but small, which fits their low permutation importance.
+- **Removing the columns does not remove the information.** With `sex` and `race` gone, sex can still be predicted from the other features at AUC 0.929. Dropping `relationship` lowers that to 0.857, and also dropping `marital-status` lowers it to 0.791. `marital-status` was dropped after `relationship`, so I did not measure it on its own. Even with all four columns gone, sex is still recoverable at 0.791 from the remaining features. I did not check which ones carry it.
+- **Removing `relationship` made the TPR gap larger** (+0.058 against the all-features model), even though sex became less predictable. I do not know why. The TPR gap across the four variants (0.080, 0.064, 0.138, 0.070) does not move in one direction, so I do not read it as a trend.
+- **Removing `marital-status` as well cuts the selection and FPR gaps but costs accuracy.** ROC-AUC drops by 0.041 and F1 from 0.709 to 0.617, and the TPR gap change includes 0. `marital-status` was the most important feature under both SHAP and permutation importance. Smaller gaps from a clearly worse model are not evidence of a fairer one. I did not check how much of the smaller gap comes from the model selecting fewer people overall.
+
+### Race
+
+Measured for the all-features model only, with no confidence intervals.
+
+| Race | n | positives | base rate | selection rate | TPR | FPR |
+|---|---|---|---|---|---|---|
+| White | 33,450 | 8,503 | 0.254 | 0.214 | 0.656 | 0.063 |
+| Black | 3,717 | 437 | 0.118 | 0.083 | 0.549 | 0.021 |
+| Asian-Pac-Islander | 1,208 | 327 | 0.271 | 0.246 | 0.679 | 0.085 |
+| Amer-Indian-Eskimo | 374 | 42 | 0.112 | 0.067 | 0.452 | 0.018 |
+| Other | 324 | 40 | 0.123 | 0.083 | 0.550 | 0.018 |
+
+Amer-Indian-Eskimo and Other have about 40 positive cases each, so their TPRs rest on roughly 20 people and I do not interpret them. I did not re-run the race comparison under the dropped-column variants.
+
+### What this audit does and does not show
+
+- I describe the gaps. I do not call the model fair or unfair. When base rates differ between groups, equal selection rates, equal TPRs and equal FPRs cannot all hold at once unless the predictions are perfect, so there is no single "fair" number here.
+- I tested one baseline approach (dropping columns) and no mitigation methods such as reweighting or group-specific thresholds.
+- The labels come from 1994 census data and carry the pay gaps of that period
+
 ## A bug I found and what I learned from it
 
 My first SHAP results were wrong. The pipeline one-hot encodes categorical features and passes a sparse matrix to XGBoost, but my SHAP code densified that matrix first. Predictions from the dense matrix differed from `pipeline.predict_proba` by up to 0.82 on 1,093 of 2,000 rows, so SHAP was explaining a different function than the one I trained. It showed up as `native-country` ranking third in importance, which did not match permutation importance, and a waterfall whose final value contradicted the row's predicted probability.
@@ -154,7 +244,7 @@ I then re-ran the cross-validation for default and tuned XGBoost with the fix, a
 - Adult is 1994 census data and a widely used benchmark. The labels reflect the income patterns of that period.
 - The random forest and stacking models were not tuned. Only XGBoost was.
 - Explanations are shown for one local case and on training rows.
-- No fairness analysis is included, even though the dataset has sex and race columns.
+- The fairness audit covers sex (with intervals) and race (descriptive only), for one model and one seed, with no mitigation methods tested.
 
 ## Repo layout
 
@@ -166,9 +256,11 @@ income-model-audit/
 │   ├── 01_baseline_and_ensembles.ipynb
 │   ├── 02_hyperparameter_optimization.ipynb
 │   ├── 03_explainability_shap_lime.ipynb
-│   └── 04_final_test_evaluation.ipynb
+│   |── 04_final_test_evaluation.ipynb
+│   └── 05_fairness_audit.ipynb
 ├── src/
 │   ├── data.py          # loading and splitting
+|   |──fairness.py      # group metrics and proxy-leakage check
 │   ├── models.py        # baseline and ensemble pipelines
 │   ├── tuning.py        # Optuna search
 │   ├── explain.py       # SHAP with a check against the pipeline
@@ -187,4 +279,3 @@ BSc Computer Science — Ahmadu Bello University, Zaria
 [![Email](https://img.shields.io/badge/Email-Contact-EA4335?logo=gmail&logoColor=white)](mailto:hayatuusmanabdulrahman@gmail.com)
 
 ---
-## For Flexisaf internship weekly deliverable
